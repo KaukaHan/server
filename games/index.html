@@ -257,7 +257,8 @@ __all__ = (
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class CustomGame(Game):
+<pre><code class="python">@with_logger
+class CustomGame(Game):
     init_mode = InitMode.NORMAL_LOBBY
     game_type = GameType.CUSTOM
 
@@ -447,7 +448,7 @@ __all__ = (
         self._players_with_unsent_army_stats = []
         self._game_stats_service = game_stats_service
         self.game_service = game_service
-        self._player_options: Dict[int, Dict[str, Any]] = defaultdict(dict)
+        self._player_options: dict[int, dict[str, Any]] = defaultdict(dict)
         self.launched_at = None
         self.ended = False
         self._logger = logging.getLogger(
@@ -462,7 +463,7 @@ __all__ = (
         self.map_file_path = f&#34;maps/{map_}.zip&#34;
         self.map_scenario_path = None
         self.password = None
-        self._players_at_launch: List[Player] = []
+        self._players_at_launch: list[Player] = []
         self.AIs = {}
         self.desyncs = 0
         self.validity = ValidityState.VALID
@@ -523,7 +524,7 @@ __all__ = (
         self._name = value[:max_len]
 
     @property
-    def armies(self) -&gt; FrozenSet[int]:
+    def armies(self) -&gt; frozenset[int]:
         return frozenset(
             self.get_player_option(player.id, &#34;Army&#34;)
             for player in self.players
@@ -534,7 +535,7 @@ __all__ = (
         return self._results.is_mutually_agreed_draw(self.armies)
 
     @property
-    def players(self) -&gt; List[Player]:
+    def players(self) -&gt; list[Player]:
         &#34;&#34;&#34;
         Players in the game
 
@@ -548,7 +549,7 @@ __all__ = (
         else:
             return self._players_at_launch
 
-    def get_connected_players(self) -&gt; List[Player]:
+    def get_connected_players(self) -&gt; list[Player]:
         &#34;&#34;&#34;
         Get a collection of all players currently connected to the game.
         &#34;&#34;&#34;
@@ -566,7 +567,7 @@ __all__ = (
         return self._connections.values()
 
     @property
-    def teams(self) -&gt; FrozenSet[int]:
+    def teams(self) -&gt; frozenset[int]:
         &#34;&#34;&#34;
         A set of all teams of this game&#39;s players.
         &#34;&#34;&#34;
@@ -613,7 +614,7 @@ __all__ = (
         team_sizes = set(len(team) for team in teams)
         return len(team_sizes) == 1
 
-    def get_team_sets(self) -&gt; List[Set[Player]]:
+    def get_team_sets(self) -&gt; list[set[Player]]:
         &#34;&#34;&#34;
         Returns a list of teams represented as sets of players.
         Note that FFA players will be separated into individual teams.
@@ -657,7 +658,7 @@ __all__ = (
         army: int,
         result_type: str,
         score: int,
-        result_metadata: FrozenSet[str] = frozenset(),
+        result_metadata: frozenset[str] = frozenset(),
     ):
         &#34;&#34;&#34;
         As computed by the game.
@@ -881,7 +882,7 @@ __all__ = (
             team_army_results,
         )
 
-    def _outcome_override_hook(self) -&gt; Optional[List[GameOutcome]]:
+    def _outcome_override_hook(self) -&gt; Optional[list[GameOutcome]]:
         return None
 
     async def load_results(self):
@@ -936,7 +937,7 @@ __all__ = (
                 scoreTime=sql_now(),
                 result=bindparam(&#34;result&#34;),
             )
-            await deadlock_retry_execute(conn, update_statement, rows)
+            await conn.deadlock_retry_execute(update_statement, rows)
 
     def get_basic_info(self) -&gt; BasicGameInfo:
         return BasicGameInfo(
@@ -1042,7 +1043,7 @@ __all__ = (
         await self._validate_game_options(valid_options)
 
     async def _validate_game_options(
-        self, valid_options: Dict[str, Tuple[Any, ValidityState]]
+        self, valid_options: dict[str, tuple[Any, ValidityState]]
     ) -&gt; bool:
         for key, value in self.gameOptions.items():
             if key in valid_options:
@@ -1094,14 +1095,15 @@ __all__ = (
             # so, and grab the map id at the same time.
             result = await conn.execute(
                 &#34;SELECT id, ranked FROM map_version &#34;
-                &#34;WHERE lower(filename) = lower(%s)&#34;, (self.map_file_path, )
+                &#34;WHERE lower(filename) = lower(:filename)&#34;,
+                filename=self.map_file_path
             )
-            row = await result.fetchone()
+            row = result.fetchone()
 
         is_generated = (self.map_file_path and &#34;neroxis_map_generator&#34; in self.map_file_path)
 
         if row:
-            self.map_id = row[&#34;id&#34;]
+            self.map_id = row.id
 
         if (
             self.validity is ValidityState.VALID
@@ -1180,7 +1182,7 @@ __all__ = (
         try:
             async with self._db.acquire() as conn:
                 await conn.execute(game_player_stats.insert().values(query_args))
-        except pymysql.MySQLError:
+        except DBAPIError:
             self._logger.exception(
                 &#34;Failed to update game_player_stats. Query args %s:&#34;, query_args
             )
@@ -1340,7 +1342,7 @@ __all__ = (
 </dl>
 <h3>Instance variables</h3>
 <dl>
-<dt id="server.games.Game.armies"><code class="name">var <span class="ident">armies</span> : FrozenSet[int]</code></dt>
+<dt id="server.games.Game.armies"><code class="name">var <span class="ident">armies</span> : frozenset[int]</code></dt>
 <dd>
 <div class="desc"></div>
 <details class="source">
@@ -1348,7 +1350,7 @@ __all__ = (
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">@property
-def armies(self) -&gt; FrozenSet[int]:
+def armies(self) -&gt; frozenset[int]:
     return frozenset(
         self.get_player_option(player.id, &#34;Army&#34;)
         for player in self.players
@@ -1490,7 +1492,7 @@ def name(self):
     return self._name</code></pre>
 </details>
 </dd>
-<dt id="server.games.Game.players"><code class="name">var <span class="ident">players</span> : List[<a title="server.players.Player" href="../players.html#server.players.Player">Player</a>]</code></dt>
+<dt id="server.games.Game.players"><code class="name">var <span class="ident">players</span> : list[<a title="server.players.Player" href="../players.html#server.players.Player">Player</a>]</code></dt>
 <dd>
 <div class="desc"><p>Players in the game</p>
 <p>Depending on the state, it is either:
@@ -1502,7 +1504,7 @@ def name(self):
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">@property
-def players(self) -&gt; List[Player]:
+def players(self) -&gt; list[Player]:
     &#34;&#34;&#34;
     Players in the game
 
@@ -1517,7 +1519,7 @@ def players(self) -&gt; List[Player]:
         return self._players_at_launch</code></pre>
 </details>
 </dd>
-<dt id="server.games.Game.teams"><code class="name">var <span class="ident">teams</span> : FrozenSet[int]</code></dt>
+<dt id="server.games.Game.teams"><code class="name">var <span class="ident">teams</span> : frozenset[int]</code></dt>
 <dd>
 <div class="desc"><p>A set of all teams of this game's players.</p></div>
 <details class="source">
@@ -1525,7 +1527,7 @@ def players(self) -&gt; List[Player]:
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">@property
-def teams(self) -&gt; FrozenSet[int]:
+def teams(self) -&gt; frozenset[int]:
     &#34;&#34;&#34;
     A set of all teams of this game&#39;s players.
     &#34;&#34;&#34;
@@ -1563,7 +1565,7 @@ def teams(self) -&gt; FrozenSet[int]:
 </details>
 </dd>
 <dt id="server.games.Game.add_result"><code class="name flex">
-<span>async def <span class="ident">add_result</span></span>(<span>self, reporter: int, army: int, result_type: str, score: int, result_metadata: FrozenSet[str] = frozenset())</span>
+<span>async def <span class="ident">add_result</span></span>(<span>self, reporter: int, army: int, result_type: str, score: int, result_metadata: frozenset[str] = frozenset())</span>
 </code></dt>
 <dd>
 <div class="desc"><p>As computed by the game.</p>
@@ -1586,7 +1588,7 @@ result message from the game, one or more words, optional</li>
     army: int,
     result_type: str,
     score: int,
-    result_metadata: FrozenSet[str] = frozenset(),
+    result_metadata: frozenset[str] = frozenset(),
 ):
     &#34;&#34;&#34;
     As computed by the game.
@@ -1739,7 +1741,7 @@ assigned an army or team, and deletes any AI's.</p></div>
 </details>
 </dd>
 <dt id="server.games.Game.get_connected_players"><code class="name flex">
-<span>def <span class="ident">get_connected_players</span></span>(<span>self) ‑> List[<a title="server.players.Player" href="../players.html#server.players.Player">Player</a>]</span>
+<span>def <span class="ident">get_connected_players</span></span>(<span>self) ‑> list[<a title="server.players.Player" href="../players.html#server.players.Player">Player</a>]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Get a collection of all players currently connected to the game.</p></div>
@@ -1747,7 +1749,7 @@ assigned an army or team, and deletes any AI's.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def get_connected_players(self) -&gt; List[Player]:
+<pre><code class="python">def get_connected_players(self) -&gt; list[Player]:
     &#34;&#34;&#34;
     Get a collection of all players currently connected to the game.
     &#34;&#34;&#34;
@@ -1791,7 +1793,7 @@ assigned an army or team, and deletes any AI's.</p></div>
 </details>
 </dd>
 <dt id="server.games.Game.get_team_sets"><code class="name flex">
-<span>def <span class="ident">get_team_sets</span></span>(<span>self) ‑> List[Set[<a title="server.players.Player" href="../players.html#server.players.Player">Player</a>]]</span>
+<span>def <span class="ident">get_team_sets</span></span>(<span>self) ‑> list[set[<a title="server.players.Player" href="../players.html#server.players.Player">Player</a>]]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Returns a list of teams represented as sets of players.
@@ -1800,7 +1802,7 @@ Note that FFA players will be separated into individual teams.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def get_team_sets(self) -&gt; List[Set[Player]]:
+<pre><code class="python">def get_team_sets(self) -&gt; list[set[Player]]:
     &#34;&#34;&#34;
     Returns a list of teams represented as sets of players.
     Note that FFA players will be separated into individual teams.
@@ -2055,7 +2057,7 @@ exist in the database.</p></div>
             scoreTime=sql_now(),
             result=bindparam(&#34;result&#34;),
         )
-        await deadlock_retry_execute(conn, update_statement, rows)</code></pre>
+        await conn.deadlock_retry_execute(update_statement, rows)</code></pre>
 </details>
 </dd>
 <dt id="server.games.Game.process_game_results"><code class="name flex">
@@ -2375,7 +2377,7 @@ game.</p></div>
     try:
         async with self._db.acquire() as conn:
             await conn.execute(game_player_stats.insert().values(query_args))
-    except pymysql.MySQLError:
+    except DBAPIError:
         self._logger.exception(
             &#34;Failed to update game_player_stats. Query args %s:&#34;, query_args
         )
@@ -2404,14 +2406,15 @@ care about recording stats for, after all).</p></div>
         # so, and grab the map id at the same time.
         result = await conn.execute(
             &#34;SELECT id, ranked FROM map_version &#34;
-            &#34;WHERE lower(filename) = lower(%s)&#34;, (self.map_file_path, )
+            &#34;WHERE lower(filename) = lower(:filename)&#34;,
+            filename=self.map_file_path
         )
-        row = await result.fetchone()
+        row = result.fetchone()
 
     is_generated = (self.map_file_path and &#34;neroxis_map_generator&#34; in self.map_file_path)
 
     if row:
-        self.map_id = row[&#34;id&#34;]
+        self.map_id = row.id
 
     if (
         self.validity is ValidityState.VALID
@@ -2565,7 +2568,8 @@ care about recording stats for, after all).</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class GameConnectionState(Enum):
+<pre><code class="python">@unique
+class GameConnectionState(Enum):
     INITIALIZING = 0
     INITIALIZED = 1
     CONNECTED_TO_HOST = 2
@@ -2624,7 +2628,8 @@ care about recording stats for, after all).</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class GameState(Enum):
+<pre><code class="python">@unique
+class GameState(Enum):
     INITIALIZING = 0
     LOBBY = 1
     LIVE = 2
@@ -2664,7 +2669,8 @@ care about recording stats for, after all).</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class GameType(Enum):
+<pre><code class="python">@unique
+class GameType(Enum):
     COOP = &#34;coop&#34;
     CUSTOM = &#34;custom&#34;
     MATCHMAKER = &#34;matchmaker&#34;</code></pre>
@@ -2699,7 +2705,8 @@ care about recording stats for, after all).</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class InitMode(Enum):
+<pre><code class="python">@unique
+class InitMode(Enum):
     NORMAL_LOBBY = 0
     AUTO_LOBBY = 1</code></pre>
 </details>
@@ -2721,7 +2728,7 @@ care about recording stats for, after all).</p></div>
 </dd>
 <dt id="server.games.LadderGame"><code class="flex name class">
 <span>class <span class="ident">LadderGame</span></span>
-<span>(</span><span>id_, *args, **kwargs)</span>
+<span>(</span><span>id_: int, database: FAFDatabase, game_service: GameService, game_stats_service: GameStatsService, host: Optional[<a title="server.players.Player" href="../players.html#server.players.Player">Player</a>] = None, name: str = 'None', map_: str = 'SCMP_007', game_mode: str = 'faf', matchmaker_queue_id: Optional[int] = None, rating_type: Optional[str] = None, displayed_rating_range: Optional[<a title="server.rating.InclusiveRange" href="../rating.html#server.rating.InclusiveRange">InclusiveRange</a>] = None, enforce_rating_range: bool = False, max_players: int = 12, setup_timeout: int = 60)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Class for 1v1 ladder games</p></div>
@@ -2735,15 +2742,6 @@ care about recording stats for, after all).</p></div>
     init_mode = InitMode.AUTO_LOBBY
     game_type = GameType.MATCHMAKER
 
-    def __init__(self, id_, *args, **kwargs):
-        new_kwargs = {
-            &#34;game_mode&#34;: FeaturedModType.LADDER_1V1,
-            &#34;rating_type&#34;: RatingType.LADDER_1V1,
-            &#34;max_players&#34;: 2,
-        }
-        new_kwargs.update(kwargs)
-        super().__init__(id_, *args, **new_kwargs)
-
     def is_winner(self, player: Player) -&gt; bool:
         return self.get_player_outcome(player) is ArmyOutcome.VICTORY
 
@@ -2754,7 +2752,7 @@ care about recording stats for, after all).</p></div>
         &#34;&#34;&#34;
         return self._results.victory_only_score(army)
 
-    def _outcome_override_hook(self) -&gt; Optional[List[GameOutcome]]:
+    def _outcome_override_hook(self) -&gt; Optional[list[GameOutcome]]:
         if not config.LADDER_1V1_OUTCOME_OVERRIDE or len(self.players) &gt; 2:
             return None
         team_sets = self.get_team_sets()
@@ -2857,7 +2855,8 @@ as 1 for win and 0 for anything else.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class ValidityState(Enum):
+<pre><code class="python">@unique
+class ValidityState(Enum):
     VALID = 0
     TOO_MANY_DESYNCS = 1
     WRONG_VICTORY_CONDITION = 2
@@ -3007,7 +3006,8 @@ as 1 for win and 0 for anything else.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class Victory(Enum):
+<pre><code class="python">@unique
+class Victory(Enum):
     DEMORALIZATION = 0
     DOMINATION = 1
     ERADICATION = 2
@@ -3047,7 +3047,8 @@ as 1 for win and 0 for anything else.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class VisibilityState(Enum):
+<pre><code class="python">@unique
+class VisibilityState(Enum):
     PUBLIC = &#34;public&#34;
     FRIENDS = &#34;friends&#34;</code></pre>
 </details>
